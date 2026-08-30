@@ -36,6 +36,12 @@ Output: {{"intent": "irrelevant", "is_unhappy": false}}
 
 User: "今天迪拜天气怎么样？"
 Output: {{"intent": "irrelevant", "is_unhappy": false}}
+
+User: "我这会在开会，晚点再看"
+Output: {{"intent": "other", "is_unhappy": false}}
+
+User: "我先想想吧"
+Output: {{"intent": "other", "is_unhappy": false}}
 </examples>"""
 
 
