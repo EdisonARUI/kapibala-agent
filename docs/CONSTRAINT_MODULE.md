@@ -69,4 +69,4 @@ def constraint_node(state: AgentState, parsed_intent: str, is_unhappy: bool):
 
 ---
 
-[← 返回架构文档](architecture.md)
+[← 返回架构文档](ARCHITECTURE.md)

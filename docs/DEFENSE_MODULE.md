@@ -60,4 +60,4 @@ def rate_limiter_node(state: AgentState):
 
 ---
 
-[← 返回架构文档](architecture.md)
+[← 返回架构文档](ARCHITECTURE.md)
