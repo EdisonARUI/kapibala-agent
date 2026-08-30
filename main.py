@@ -5,8 +5,8 @@ from graph.workflow import create_workflow
 from Constraint.state_updater import reset_escalation_state
 
 def main():
-    # 强制加载 .env.local 中的环境变量
-    load_dotenv(".env.local")
+    # 加载环境变量
+    load_dotenv()
     
     # 校验 API Key
     if not os.environ.get("gemini_api_key") and not os.environ.get("GEMINI_API_KEY"):
