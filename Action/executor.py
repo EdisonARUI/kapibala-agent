@@ -1,4 +1,8 @@
 import os
+import sys
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from config import GEMINI_API_KEY, LLM_MODEL
+
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.messages import SystemMessage
@@ -9,13 +13,9 @@ def reply_node(state: dict) -> dict:
     if not messages:
         return {}
         
-    api_key = os.environ.get("gemini_api_key")
-    if not api_key:
-        api_key = os.environ.get("GEMINI_API_KEY")
-
     llm = ChatGoogleGenerativeAI(
-        model="gemini-3-flash-preview",
-        api_key=api_key,
+        model=LLM_MODEL,
+        api_key=GEMINI_API_KEY,
         temperature=0.7
     )
     

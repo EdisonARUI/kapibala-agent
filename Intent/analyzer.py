@@ -1,4 +1,8 @@
 import os
+import sys
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from config import GEMINI_API_KEY, LLM_MODEL
+
 from pydantic import BaseModel, Field
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.prompts import ChatPromptTemplate
@@ -23,14 +27,10 @@ def analyzer_node(state: dict) -> dict:
     # 提取最新的用户消息
     latest_msg = messages[-1].content
     
-    api_key = os.environ.get("gemini_api_key")
-    if not api_key:
-        api_key = os.environ.get("GEMINI_API_KEY")
-
     # 使用 Gemini 1.5 Flash 或 Pro
     llm = ChatGoogleGenerativeAI(
-        model="gemini-3-flash-preview",
-        api_key=api_key,
+        model=LLM_MODEL,
+        api_key=GEMINI_API_KEY,
         temperature=0.0
     ).with_structured_output(IntentOutput)
 
