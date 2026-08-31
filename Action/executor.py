@@ -2,7 +2,7 @@ import os
 import sys
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from config import GEMINI_API_KEY, LLM_MODEL
-from Prompts.manager import build_system_prompt, EXECUTOR_ROLE, EXECUTOR_RULES, EXECUTOR_EXAMPLES
+from prompts.manager import build_system_prompt, EXECUTOR_ROLE, EXECUTOR_RULES, EXECUTOR_EXAMPLES
 
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.prompts import ChatPromptTemplate

@@ -3,7 +3,7 @@ import warnings
 from dotenv import load_dotenv
 from langchain_core.messages import HumanMessage, AIMessage
 from graph.workflow import create_workflow
-from Constraint.state_updater import reset_escalation_state
+from constraint.state_updater import reset_escalation_state
 
 # Suppress google-genai warning about AFC in generate_content
 warnings.filterwarnings("ignore", message=".*automatic function calling.*")
