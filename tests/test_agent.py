@@ -33,6 +33,8 @@ def load_env():
     ("不需要，别打了。", "rejected", False),
     ("你们一天到晚发广告，烦不烦啊？滚！", "rejected", True),
     ("今天天气不错，你们那边下雨了吗？", "irrelevant", False),
+    ("转人工", "escalate_to_human", False),
+    ("帮我转接一下人工客服，谢谢", "escalate_to_human", False),
     ("先这样吧，我晚点看。", "other", False),
 ])
 def test_intent_recognition(user_input, expected_intent, expected_unhappy):
@@ -97,6 +99,86 @@ def test_rate_limiter():
     res2 = rate_limit_checker(state2)
     assert "reply_content" not in res2
     assert len(res2["message_timestamps"]) == 1
+
+def test_guardian_rate_limiter():
+    """验证 guardian_node 能在入口正确拦截限流请求。"""
+    from defense.guardian import guardian_node
+    
+    # 1. 假设最近 10 秒发过一条，期待触发限流拦截
+    state = {
+        "message_timestamps": [time.time() - 10]
+    }
+    res = guardian_node(state)
+    assert res.get("intent") == "rate_limited"
+    assert res.get("reply_content") == "您发送消息过于频繁，请稍后再试。"
+    assert len(res.get("message_timestamps", [])) == 1
+    
+    # 2. 假设 70 秒前发过一条（已过期）
+    state2 = {
+        "message_timestamps": [time.time() - 70]
+    }
+    res2 = guardian_node(state2)
+    assert res2.get("intent") != "rate_limited"
+    assert len(res2.get("message_timestamps", [])) == 0
+
+def test_workflow_rate_limiter_integration(app):
+    """验证完整工作流在触发限流时，入口直接拦截，且不调用 analyzer 大模型。"""
+    from unittest.mock import patch
+    
+    with patch("intent.analyzer.analyzer_node") as mock_analyzer:
+        # 模拟 10 秒前刚发过消息，触发限流
+        state = {
+            "messages": [HumanMessage(content="你好")],
+            "intent": "",
+            "action": "",
+            "is_unhappy": False,
+            "abnormal_count": 0,
+            "is_escalated": False,
+            "message_timestamps": [time.time() - 10],
+            "reply_content": ""
+        }
+        
+        # 运行工作流
+        result = app.invoke(state)
+        
+        # 验证结果
+        assert result["intent"] == "rate_limited"
+        assert result["reply_content"] == "您发送消息过于频繁，请稍后再试。"
+        # 确认没有记录新的发送时间戳（长度依然是 1）
+        assert len(result["message_timestamps"]) == 1
+        # 验证 mock 确实没有被调用
+        mock_analyzer.assert_not_called()
+
+def test_workflow_rate_limiter_normal_flow(app):
+    """验证在未触发限流时，正常流转且最终在出口处追加时间戳。"""
+    from unittest.mock import patch
+    
+    with patch("intent.analyzer.analyzer_node") as mock_analyzer:
+        mock_analyzer.return_value = {
+            "intent": "needs_info",
+            "is_unhappy": False
+        }
+        
+        state = {
+            "messages": [HumanMessage(content="你们的产品怎么收费？")],
+            "intent": "",
+            "action": "",
+            "is_unhappy": False,
+            "abnormal_count": 0,
+            "is_escalated": False,
+            "message_timestamps": [],
+            "reply_content": ""
+        }
+        
+        result = app.invoke(state)
+        
+        # 应该正常生成回复内容
+        assert "reply_content" in result
+        assert result["reply_content"] != "您发送消息过于频繁，请稍后再试。"
+        # 验证最终在出口记录了当前发送的时间戳（长度变为 1）
+        assert len(result["message_timestamps"]) == 1
+        # 验证大模型确实被调用了（说明没有在入口被拦截）
+        mock_analyzer.assert_called_once()
 
 # 3.2 连续异常强制转人工测试 (Escalation State Machine)
 def test_escalation_state_machine():
