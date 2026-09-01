@@ -12,7 +12,7 @@ from langchain_core.messages import SystemMessage, HumanMessage
 
 class IntentOutput(BaseModel):
     reasoning: str = Field(description="推理过程：你关注了哪些关键词、为什么归入该意图类别、情绪判断的具体依据")
-    intent: str = Field(description="用户意图分类，必须是以下之一: interested, needs_info, rejected, irrelevant, other")
+    intent: str = Field(description="用户意图分类，必须是以下之一: interested, needs_info, rejected, irrelevant, escalate_to_human, other")
     is_unhappy: bool = Field(description="客户当前情绪是否明显不满")
 
 def analyzer_node(state: dict) -> dict:
@@ -27,15 +27,10 @@ def analyzer_node(state: dict) -> dict:
     if not messages:
         return {}
     
-    # 提取最新的用户消息
-    latest_msg = messages[-1].content
+    # 提取最新的用户消息，兼容 dict 格式 (Gradio 状态序列化)
+    last_msg = messages[-1]
+    latest_msg = last_msg.content if hasattr(last_msg, "content") else last_msg.get("content", "")
     
-    llm = ChatGoogleGenerativeAI(
-        model=LLM_MODEL,
-        api_key=GEMINI_API_KEY,
-        temperature=0.0
-    ).with_structured_output(IntentOutput)
-
     system_prompt_str = build_system_prompt(
         role=ANALYZER_ROLE,
         rules=ANALYZER_RULES,
@@ -46,10 +41,16 @@ def analyzer_node(state: dict) -> dict:
         ("system", system_prompt_str),
         ("human", "客户说: {text}")
     ])
-
-    chain = prompt | llm
     
     try:
+        llm = ChatGoogleGenerativeAI(
+            model=LLM_MODEL,
+            api_key=GEMINI_API_KEY,
+            temperature=0.0
+        ).with_structured_output(IntentOutput)
+
+        chain = prompt | llm
+        
         result = chain.invoke({"text": latest_msg})
         # 提取 reasoning 写入 CoT 日志，不暴露给调用方
         log_cot(

@@ -26,6 +26,10 @@ def state_updater_node(state: dict) -> dict:
         is_escalated = True
         new_intent = "escalate_to_human"
         
+    # 主动转人工也需要将 is_escalated 状态置为 True
+    if new_intent == "escalate_to_human":
+        is_escalated = True
+        
     return {
         "abnormal_count": current_count,
         "is_escalated": is_escalated,

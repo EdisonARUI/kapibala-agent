@@ -9,7 +9,7 @@ def parser_node(state: dict) -> dict:
     if intent == "silent_escalated":
         return {}
         
-    valid_intents = ["interested", "needs_info", "rejected", "irrelevant", "other"]
+    valid_intents = ["interested", "needs_info", "rejected", "irrelevant", "escalate_to_human", "other"]
     
     if intent not in valid_intents:
         # 兜底：如果模型输出了不合法的意图，强制设为 irrelevant
