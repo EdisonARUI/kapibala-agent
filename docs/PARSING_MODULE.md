@@ -29,7 +29,7 @@
 
 ### 2.1 强类型校验
 - 定义 `Pydantic BaseModel`，要求包含精确的字段：
-  - `intent`: `Literal["reply", "schedule_followup", "escalate_to_human", "mark_not_interested", "答非所问"]`
+  - `intent`: `Literal["interested", "needs_info", "rejected", "irrelevant", "escalate_to_human", "other"]`
   - `sentiment_is_unhappy`: `bool`
 
 ### 2.2 容错与重试机制 (Retry Controller)
@@ -46,7 +46,7 @@ from pydantic import BaseModel, Field
 from typing import Literal
 
 class ParsedIntent(BaseModel):
-    intent: Literal["reply", "schedule_followup", "escalate_to_human", "mark_not_interested", "答非所问"]
+    intent: Literal["interested", "needs_info", "rejected", "irrelevant", "escalate_to_human", "other"]
     sentiment_is_unhappy: bool = Field(default=False)
 
 def parse_llm_output(raw_output: str) -> ParsedIntent:

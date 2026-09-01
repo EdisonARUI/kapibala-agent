@@ -34,7 +34,8 @@
 
 ### 2.2 System Prompt 管理
 - 提供强大且严格的 System Prompt，要求大模型仅做“观察者”和“分析师”，此时**不负责生成回复**。
-- Prompt 中明确列出意图的枚举定义（如：`reply`, `escalate`, `not_interested`）以及情绪的判定标准。
+- Prompt 中明确列出意图的枚举定义（如：`interested`, `needs_info`, `rejected`, `irrelevant`, `escalate_to_human`, `other`）以及情绪的判定标准。
+- Prompt 限制了大模型只做识别分析，不产生实际客户回复。
 
 ### 2.3 LLM 调用引擎
 - 支持调用 OpenAI (GPT-4o)、Anthropic 或国产大模型接口。
@@ -51,9 +52,9 @@
 - 一个 JSON 字符串，例如：
 ```json
 {
-  "intent": "reply",
-  "sentiment_is_unhappy": false,
-  "reason": "用户正在询问产品价格，态度正常"
+  "intent": "needs_info",
+  "is_unhappy": false,
+  "reasoning": "用户正在询问产品价格，态度正常"
 }
 ```
 

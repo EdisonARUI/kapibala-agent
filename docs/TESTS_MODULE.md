@@ -13,6 +13,8 @@
 | "不需要，别打了。" | `rejected` | False | 明确拒绝 |
 | "你们一天到晚发广告，烦不烦啊？滚！" | `rejected` | True | 明确拒绝且情绪极度不满 |
 | "今天天气不错，你们那边下雨了吗？" | `irrelevant` | False | 答非所问 / 无关话题 |
+| "转人工" | `escalate_to_human` | False | 主动要求转接人工客服 |
+| "帮我转接一下人工客服，谢谢" | `escalate_to_human` | False | 主动要求转接人工客服 |
 | "先这样吧，我晚点看。" | `other` | False | 无法明确归类 |
 
 ## 2. 动作流转测试 (Action Routing)

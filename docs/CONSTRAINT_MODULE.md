@@ -29,13 +29,14 @@
 
 ### 2.1 状态维护 (State Updater)
 - 读取当前状态字典（`AgentState`）中的 `abnormal_count`。
-- 如果解析模块传来的 `intent` 是“答非所问”，或者 `sentiment_is_unhappy` 是 `True`，则将 `abnormal_count` 自增 1。
+- 如果解析模块传来的 `intent` 是“答非所问”(`irrelevant`)，或者 `sentiment_is_unhappy` 是 `True`，则将 `abnormal_count` 自增 1。
 - 如果属于正常沟通，则将其重置为 0。
 
 ### 2.2 流程干预与意图覆写
-- 校验业务规则阈值。一旦 `abnormal_count >= 2`：
+- **被动干预（连续异常转人工）**：一旦 `abnormal_count >= 2`：
   - 触发状态锁：将状态机的 `is_escalated` 置为 `True`，确保该状态持久化。
   - **覆写意图**：无视大模型原本解析出的意图，直接将传递给下游的 `intent` 强制修改为 `"escalate_to_human"`。
+- **主动干预（客户要求转人工）**：若大模型直接判定意图为 `"escalate_to_human"`，状态机同样会强行把 `is_escalated` 更新为 `True`，以确保系统在下一轮对话自动转入静默状态。
 
 ---
 
@@ -44,21 +45,27 @@
 此模块体现了人机协作系统中“机器失控”时的最终保障：
 
 ```python
-def constraint_node(state: AgentState, parsed_intent: str, is_unhappy: bool):
-    current_count = state.get("abnormal_count", 0)
+def state_updater_node(state: dict) -> dict:
+    intent = state.get("intent")
+    is_unhappy = state.get("is_unhappy", False)
     
-    if parsed_intent == "答非所问" or is_unhappy:
+    current_count = state.get("abnormal_count", 0)
+    if intent == "irrelevant" or is_unhappy:
         current_count += 1
     else:
         current_count = 0  # 恢复正常，重置
         
-    new_intent = parsed_intent
+    new_intent = intent
     is_escalated = state.get("is_escalated", False)
     
     # 强制业务约束规则
     if current_count >= 2:
         is_escalated = True
         new_intent = "escalate_to_human"
+        
+    # 主动转人工也需要将 is_escalated 状态置为 True
+    if new_intent == "escalate_to_human":
+        is_escalated = True
         
     return {
         "abnormal_count": current_count,
