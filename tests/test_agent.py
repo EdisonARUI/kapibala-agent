@@ -121,11 +121,14 @@ def test_guardian_rate_limiter():
     assert res2.get("intent") != "rate_limited"
     assert len(res2.get("message_timestamps", [])) == 0
 
-def test_workflow_rate_limiter_integration(app):
+def test_workflow_rate_limiter_integration():
     """验证完整工作流在触发限流时，入口直接拦截，且不调用 analyzer 大模型。"""
     from unittest.mock import patch
+    from graph.workflow import create_workflow
     
-    with patch("intent.analyzer.analyzer_node") as mock_analyzer:
+    with patch("graph.workflow.analyzer_node") as mock_analyzer:
+        app = create_workflow()
+        
         # 模拟 10 秒前刚发过消息，触发限流
         state = {
             "messages": [HumanMessage(content="你好")],
@@ -149,15 +152,18 @@ def test_workflow_rate_limiter_integration(app):
         # 验证 mock 确实没有被调用
         mock_analyzer.assert_not_called()
 
-def test_workflow_rate_limiter_normal_flow(app):
+def test_workflow_rate_limiter_normal_flow():
     """验证在未触发限流时，正常流转且最终在出口处追加时间戳。"""
     from unittest.mock import patch
+    from graph.workflow import create_workflow
     
-    with patch("intent.analyzer.analyzer_node") as mock_analyzer:
+    with patch("graph.workflow.analyzer_node") as mock_analyzer:
         mock_analyzer.return_value = {
             "intent": "needs_info",
             "is_unhappy": False
         }
+        
+        app = create_workflow()
         
         state = {
             "messages": [HumanMessage(content="你们的产品怎么收费？")],
