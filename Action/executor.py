@@ -56,12 +56,12 @@ def reply_node(state: dict) -> dict:
 
 def schedule_followup_node(state: dict) -> dict:
     """执行 schedule_followup 动作"""
-    return {"reply_content": "[系统动作]: 已为您标记稍后跟进，本轮不回复。", "action": "schedule_followup"}
+    return {"reply_content": "系统动作: 已为您标记稍后跟进，本轮不回复。", "action": "schedule_followup"}
 
 def escalate_to_human_node(state: dict) -> dict:
     """执行 escalate_to_human 动作"""
-    return {"reply_content": "[系统动作]: 已为您转接人工客服。系统进入静默状态。", "action": "escalate_to_human"}
+    return {"reply_content": "系统动作: 已为您转接人工客服。系统进入静默状态。", "action": "escalate_to_human"}
 
 def mark_not_interested_node(state: dict) -> dict:
     """执行 mark_not_interested 动作"""
-    return {"reply_content": "[系统动作]: 客户不感兴趣，已结束当前会话。", "action": "mark_not_interested"}
+    return {"reply_content": "系统动作: 客户不感兴趣，已结束当前会话。", "action": "mark_not_interested"}
