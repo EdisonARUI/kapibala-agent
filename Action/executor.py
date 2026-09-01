@@ -48,7 +48,7 @@ def reply_node(state: dict) -> dict:
             node="EXECUTOR",
             input_text=latest_input,
             reasoning=result.reasoning,
-            output_summary=result.reply[:100]  # 只记录回复前 100 个字符
+            output_summary=result.reply
         )
         return {"reply_content": result.reply, "action": "reply"}
     except Exception as e:
