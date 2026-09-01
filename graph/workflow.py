@@ -2,7 +2,7 @@ from langgraph.graph import StateGraph, END
 from graph.state import AgentState
 from defense.guardian import guardian_node, rate_limit_checker
 from intent.analyzer import analyzer_node
-from parsing.parser import parser_node
+from parsing.parser import parser_node, reply_parser_node
 from constraint.state_updater import state_updater_node
 from action.executor import (
     reply_node, 
@@ -36,6 +36,7 @@ def create_workflow() -> StateGraph:
     workflow.add_node("guardian", guardian_node)
     workflow.add_node("analyzer", analyzer_node)
     workflow.add_node("parser", parser_node)
+    workflow.add_node("reply_parser", reply_parser_node)
     workflow.add_node("state_updater", state_updater_node)
     
     workflow.add_node("reply_action", reply_node)
@@ -71,11 +72,13 @@ def create_workflow() -> StateGraph:
         }
     )
     
-    # 所有的动作执行完后，都要经过速率限制器
-    workflow.add_edge("reply_action", "rate_limiter")
-    workflow.add_edge("schedule_action", "rate_limiter")
-    workflow.add_edge("escalate_action", "rate_limiter")
-    workflow.add_edge("not_interested_action", "rate_limiter")
+    # 所有的动作执行完后，先经过回复解析器进行清洗，然后再经过速率限制器
+    workflow.add_edge("reply_action", "reply_parser")
+    workflow.add_edge("schedule_action", "reply_parser")
+    workflow.add_edge("escalate_action", "reply_parser")
+    workflow.add_edge("not_interested_action", "reply_parser")
+    
+    workflow.add_edge("reply_parser", "rate_limiter")
     
     workflow.add_edge("rate_limiter", END)
 
