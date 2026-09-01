@@ -23,12 +23,16 @@ def respond(message, history, state):
         state = {
             "messages": [],
             "intent": "",
+            "action": "",
             "is_unhappy": False,
             "abnormal_count": 0,
             "is_escalated": False,
             "message_timestamps": [],
             "reply_content": ""
         }
+    
+    # 每次请求前清空上一轮的回复内容
+    state["reply_content"] = ""
     
     # 判断是否处于静默状态
     if state.get("intent") == "silent_escalated":
@@ -57,6 +61,7 @@ def reset_state():
     new_state = {
         "messages": [],
         "intent": "",
+        "action": "",
         "is_unhappy": False,
         "abnormal_count": 0,
         "is_escalated": False,
@@ -67,71 +72,129 @@ def reset_state():
     return [], new_state
 
 # 构建 Gradio Web 界面
-with gr.Blocks(title="Kapibala Agent MVP", theme=gr.themes.Soft()) as demo:
-    gr.Markdown("# 获客初筛 Agent MVP (Web UI)")
-    gr.Markdown("本项目是基于 Gradio 构建的交互界面。请在左侧与 Agent 进行对话，在右侧可以实时查看其内部的研判状态。")
+with gr.Blocks(title="Kapibala Agent MVP") as demo:
+    gr.Markdown("# Kapibala Agent")
+    gr.Markdown("本项目是基于 Gradio 模拟IM交互界面。请在左侧与 Agent 进行对话，在右侧可以实时查看其内部的研判状态。")
     
     agent_state = gr.State(None)
+    timer = gr.Timer(1)
     
     with gr.Row():
         with gr.Column(scale=3):
             # 对话框
-            chatbot = gr.Chatbot(height=500, label="Agent 对话")
+            chatbot = gr.Chatbot(
+                value=[], 
+                height=500, 
+                label="Agent 对话",
+                avatar_images=(
+                    "https://api.dicebear.com/7.x/adventurer/svg?seed=User", 
+                    "https://api.dicebear.com/7.x/bottts/svg?seed=Agent"
+                )
+            )
             with gr.Row():
-                msg = gr.Textbox(label="输入消息", placeholder="请输入...", scale=4)
+                msg = gr.Textbox(show_label=False, container=False, placeholder="请输入...", scale=4)
                 submit_btn = gr.Button("发送", variant="primary", scale=1)
-            clear_btn = gr.Button("清除对话")
                 
         with gr.Column(scale=1):
             gr.Markdown("### 内部状态 (Agent State)")
             intent_box = gr.Textbox(label="当前意图 (Intent)", interactive=False)
+            action_box = gr.Textbox(label="执行动作 (Action)", interactive=False)
             unhappy_box = gr.Checkbox(label="不满情绪 (Is Unhappy)", interactive=False)
             abnormal_box = gr.Number(label="异常计数 (Abnormal Count)", interactive=False)
             escalated_box = gr.Checkbox(label="转人工状态 (Is Escalated)", interactive=False)
+            rate_limit_box = gr.Textbox(label="限流冷却 (Rate Limit CD)", interactive=False)
             
             gr.Markdown("---")
             gr.Markdown("**调试控制**")
-            reset_btn = gr.Button("重置状态 (Reset)", variant="stop")
+            with gr.Row():
+                reset_btn = gr.Button("重置状态 (Reset)", variant="stop")
+                clear_btn = gr.Button("清除对话", variant="secondary")
             
     # 消息处理逻辑
-    def handle_msg(user_msg, chat_history, current_state):
+    def add_user_message(user_msg, chat_history):
+        if chat_history is None:
+            chat_history = []
         if not user_msg.strip():
-            return "", chat_history, current_state
-            
-        bot_reply, new_state = respond(user_msg, chat_history, current_state)
-        chat_history.append([user_msg, bot_reply])
+            return user_msg, chat_history
+        chat_history.append({"role": "user", "content": user_msg})
+        return "", chat_history
+
+    def get_bot_response(chat_history, current_state):
+        if not chat_history:
+            return chat_history, current_state
+        # 获取最新的一条用户消息内容
+        last_msg = chat_history[-1]
+        if hasattr(last_msg, "content"):
+            user_msg = last_msg.content
+        elif isinstance(last_msg, dict):
+            user_msg = last_msg.get("content", "")
+        elif isinstance(last_msg, (list, tuple)):
+            user_msg = last_msg[0]
+        else:
+            user_msg = str(last_msg)
         
-        return "", chat_history, new_state
+        bot_reply, new_state = respond(user_msg, chat_history, current_state)
+        chat_history.append({"role": "assistant", "content": bot_reply})
+        
+        return chat_history, new_state
         
     def update_sidebar(state):
         if not state:
-            return "", False, 0, False
+            return "", "", False, 0, False
+            
         return (
             state.get("intent", ""),
+            state.get("action", ""),
             state.get("is_unhappy", False),
             state.get("abnormal_count", 0),
             state.get("is_escalated", False)
         )
         
+    def update_countdown(state):
+        if not state:
+            return "0s"
+        import time
+        timestamps = state.get("message_timestamps", [])
+        now = time.time()
+        valid_timestamps = [ts for ts in timestamps if now - ts < 60]
+        if valid_timestamps:
+            remaining = max(0, int(60 - (now - valid_timestamps[-1])))
+            return f"{remaining}s"
+        return "0s"
+        
+    timer.tick(
+        update_countdown,
+        inputs=[agent_state],
+        outputs=[rate_limit_box]
+    )
+        
     # 绑定发送事件
     submit_btn.click(
-        handle_msg, 
-        inputs=[msg, chatbot, agent_state], 
-        outputs=[msg, chatbot, agent_state]
+        add_user_message,
+        inputs=[msg, chatbot],
+        outputs=[msg, chatbot]
+    ).then(
+        get_bot_response,
+        inputs=[chatbot, agent_state],
+        outputs=[chatbot, agent_state]
     ).then(
         update_sidebar,
         inputs=[agent_state],
-        outputs=[intent_box, unhappy_box, abnormal_box, escalated_box]
+        outputs=[intent_box, action_box, unhappy_box, abnormal_box, escalated_box]
     )
     
     msg.submit(
-        handle_msg, 
-        inputs=[msg, chatbot, agent_state], 
-        outputs=[msg, chatbot, agent_state]
+        add_user_message,
+        inputs=[msg, chatbot],
+        outputs=[msg, chatbot]
+    ).then(
+        get_bot_response,
+        inputs=[chatbot, agent_state],
+        outputs=[chatbot, agent_state]
     ).then(
         update_sidebar,
         inputs=[agent_state],
-        outputs=[intent_box, unhappy_box, abnormal_box, escalated_box]
+        outputs=[intent_box, action_box, unhappy_box, abnormal_box, escalated_box]
     )
     
     # 绑定重置和清除事件
@@ -146,7 +209,7 @@ with gr.Blocks(title="Kapibala Agent MVP", theme=gr.themes.Soft()) as demo:
     ).then(
         update_sidebar,
         inputs=[agent_state],
-        outputs=[intent_box, unhappy_box, abnormal_box, escalated_box]
+        outputs=[intent_box, action_box, unhappy_box, abnormal_box, escalated_box]
     )
     
     clear_btn.click(
@@ -156,8 +219,8 @@ with gr.Blocks(title="Kapibala Agent MVP", theme=gr.themes.Soft()) as demo:
     ).then(
         update_sidebar,
         inputs=[agent_state],
-        outputs=[intent_box, unhappy_box, abnormal_box, escalated_box]
+        outputs=[intent_box, action_box, unhappy_box, abnormal_box, escalated_box]
     )
     
 if __name__ == "__main__":
-    demo.launch(server_name="127.0.0.1", server_port=7860)
+    demo.launch(server_name="127.0.0.1", server_port=7861, theme=gr.themes.Soft())

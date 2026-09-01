@@ -12,7 +12,8 @@ from action.executor import (
 )
 
 def route_after_guardian(state: AgentState) -> str:
-    if state.get("intent") == "silent_escalated":
+    intent = state.get("intent")
+    if intent in ("silent_escalated", "rate_limited"):
         return "end"
     return "analyzer"
 

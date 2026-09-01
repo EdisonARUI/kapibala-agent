@@ -5,6 +5,7 @@ from langchain_core.messages import BaseMessage
 class AgentState(TypedDict):
     messages: Annotated[List[BaseMessage], operator.add]
     intent: str
+    action: str
     is_unhappy: bool
     abnormal_count: int
     is_escalated: bool
